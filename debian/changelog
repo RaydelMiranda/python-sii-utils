@@ -1,0 +1,20 @@
+python-sii-utils (1.0.0~2016062400) UNRELEASED; urgency=low
+
+  [Release 1.0.0.dev2016062400]
+  * Bundling of <Documento> XML's
+  * Bundling of <EnvioDTE>
+  * Bundling of <LibroCompraVenta> for Libro de Ventas.
+  * Generation of <RecepcionEnvio> from <EnvioDTE>.
+  * Generation of <RecepcionDTE> from <EnvioDTE>.
+  * Signature of XML file.
+  * Signature verification of XML file.
+  * Schema verification of <DTE>, <EnvioDTE>, ....
+  * TeX Template creation from <DTE>.
+  * PDF creation from TeX template.
+  * PDF printing via CUPS.
+  * Listing of formats, mediums and printers.
+  * SII connection testing (maullin and palena).
+  * SII <EnvioDTE> upload.
+  * 
+
+ -- Leonhard Weber <leonhard.weber@voipir.cl>  Fri, 24 Jun 2016 18:42:17 -0400

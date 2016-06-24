@@ -1,0 +1,12 @@
+# Build Artifacts
+build/
+dist/
+ignore/
+
+*.pyc
+*.egg*
+*.swp
+
+# Resource Directories
+certs/
+sets/

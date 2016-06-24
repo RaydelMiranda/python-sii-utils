@@ -1,0 +1,25 @@
+Source: python-sii-utils
+Section: python
+Priority: optional
+Maintainer: Leonhard Weber <leonhard.weber@voipir.cl>
+Build-Depends:
+    dh-python (>= 1.20141111),
+    debhelper (>= 9),
+    python3   (>= 3.4.2),
+    python3-setuptools
+Standards-Version: 3.9.8
+
+Package: python3-sii-utils
+Architecture: all
+Depends:
+    ${misc:Depends},
+    python3      (>= 3.4.2),
+    python3-sii  (>= 1.0.0~2016062300),
+    python3-yaml (>= 3.11)
+Description: SII Command Line Utilities.
+ Provides command line utilities for everything supported by the python-sii
+ Library. That includes at the moment, signing, verification of signature and
+ schema, creation of EnvioDTE, LibroCompraVenta, RecepcionEnvio and
+ RecepcionDTE. Also testing conectivity to maullin and palena servers as well as
+ DTE upload. More to come...
+ .

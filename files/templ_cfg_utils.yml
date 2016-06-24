@@ -1,0 +1,17 @@
+#
+# SII shell utility config file
+#
+
+auth:
+    key:
+    cert:
+
+static:
+    cafs:      "/var/lib/sii/cafs"
+    companies: "/var/lib/sii/companies.yml"
+
+mail:
+    host:
+    port:
+    user:
+    passwd:
