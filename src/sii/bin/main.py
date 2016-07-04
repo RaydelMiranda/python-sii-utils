@@ -8,6 +8,7 @@ Commands:
     xml  Tools for manipulation and checking of XML files according to SII schemas.
     pdf  Tools for the PDF subsystem; creation of PDF's from XML's or printing them.
     ws   Tools for interactions with the SII Web Services, their protocols etc.
+    xch  Tools for mailing/exchange of DTE's between Emitters.
 
     help  This message.
 
@@ -25,6 +26,7 @@ import docopt
 from . import cmd_dte
 from . import cmd_pdf
 from . import cmd_ws
+from . import cmd_xch
 from . import cmd_xml
 
 from .config import Configuration
@@ -34,9 +36,10 @@ DEFAULT_CONFIG_PATH = '/usr/share/sii/templ_cfg_utils.yml'
 
 ACTIONS = {
     'dte': cmd_dte,
-    'xml': cmd_xml,
     'pdf': cmd_pdf,
     'ws' : cmd_ws,
+    'xch': cmd_xch,
+    'xml': cmd_xml
 }
 
 
