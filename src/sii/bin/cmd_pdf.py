@@ -11,6 +11,7 @@ Options:
     --format <format>  # Format to output the file to. Available are 'tex' and 'pdf'. [default: pdf]
     --medium <medium>  # Paper size to use. Available are 'carta', 'oficio' and 'thermal80mm'. [default: carta]
     --cedible          # If "cedible" declaration form should be included [default: false]
+    --draft            # Include a DRAFT disclaimer on the document.
 
     -p --progress  # Output progress. [default: false]
 
@@ -85,7 +86,13 @@ def handle_create(args, config):
         if args['--medium'] not in ('carta', 'oficio', 'thermal80mm'):
             raise SystemExit("Unknown medium to generate printable template for: {0}".format(args['--medium']))
 
-        template, resources = printing.create_template(tree, company_pool, args['--medium'], cedible=args['--cedible'])
+        template, resources = printing.create_template(
+            dte_xml = tree,
+            company = company_pool,
+            medium  = args['--medium'],
+            cedible = args['--cedible'],
+            draft   = args['--draft']
+        )
 
         if args['tex']:
             if args['<outfile>']:
