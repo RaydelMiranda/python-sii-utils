@@ -9,6 +9,7 @@ Commands:
     pdf  Tools for the PDF subsystem; creation of PDF's from XML's or printing them.
     ws   Tools for interactions with the SII Web Services, their protocols etc.
     xch  Tools for mailing/exchange of DTE's between Emitters.
+    lcv  Tools for introspection and manipulation of LC's and LV's.
 
     help  This message.
 
@@ -24,6 +25,7 @@ import traceback
 import docopt
 
 from . import cmd_dte
+from . import cmd_lcv
 from . import cmd_pdf
 from . import cmd_ws
 from . import cmd_xch
@@ -36,6 +38,7 @@ DEFAULT_CONFIG_PATH = '/usr/share/sii/templ_cfg_utils.yml'
 
 ACTIONS = {
     'dte': cmd_dte,
+    'lcv': cmd_lcv,
     'pdf': cmd_pdf,
     'ws' : cmd_ws,
     'xch': cmd_xch,
