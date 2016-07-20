@@ -11,18 +11,21 @@ Commands:
     xch  Tools for mailing/exchange of DTE's between Emitters.
     lcv  Tools for introspection and manipulation of LC's and LV's.
 
-    help  This message.
+    help     This message.
+    version  Display version number.
 
 Common Options:
     --config <cfg>  # Configuration file to read from. [default: ~/.config/sii/cfg_utils.yml]
     --debug         # Drop to post-mortem debugging instead of failing with a message.
-    --help          # This message
+    --help          # This message.
+    --version       # Display version number.
 """
 import pdb
 import sys
 import traceback
 
 import docopt
+import pkg_resources
 
 from . import cmd_dte
 from . import cmd_lcv
@@ -33,8 +36,8 @@ from . import cmd_xml
 
 from .config import Configuration
 
-DEFAULT_CONFIG_PATH = '/usr/share/sii/templ_cfg_utils.yml'
-
+DEFAULT_CONFIG_PATH = '/usr/share/doc/python3-sii-utils/templ_config.yml'
+VERSION             = pkg_resources.get_distribution("python-sii-utils").version
 
 ACTIONS = {
     'dte': cmd_dte,
@@ -51,6 +54,8 @@ def cmd(args, config):
 
     if args['<command>'] == 'help':
         print(__doc__)
+    elif args['<command>'] == 'version':
+        print(VERSION)
     else:
         if module is None:
             print("Unknown Command: {0}".format(args['<command>']), file=sys.stderr)
@@ -60,7 +65,7 @@ def cmd(args, config):
 
 
 def main():
-    args = docopt.docopt(__doc__, options_first=True)
+    args = docopt.docopt(__doc__, options_first=True, version=VERSION)
 
     try:
         config = Configuration(cfg_path=args['--config'], cfg_templ=DEFAULT_CONFIG_PATH)
