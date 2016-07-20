@@ -3,17 +3,19 @@ Usage:
     sii pdf [options] list formats
     sii pdf [options] list mediums
     sii pdf [options] list printers
-    sii pdf [options] create tex [<outfile>] <infile>...
-    sii pdf [options] create pdf [--progress] [--suffixed | <outfile>] <infile>...
+    sii pdf [options] create tex [<outfile>] [-] | <infile>...
+    sii pdf [options] create pdf [--progress] [--suffixed | --generate | <outfile>] [-] | <infile>...
     sii pdf [options] print <printer> <infile>...
 
 Options:
+    # PDF and TEX Options
     --format <format>  # Format to output the file to. Available are 'tex' and 'pdf'. [default: pdf]
     --medium <medium>  # Paper size to use. Available are 'carta', 'oficio' and 'thermal80mm'. [default: carta]
+    --extern           # Specify whether we own the document or whether it was received from a 3d-party/extern/provider.
     --cedible          # If "cedible" declaration form should be included [default: false]
     --draft            # Include a DRAFT disclaimer on the document.
 
-    -p --progress  # Output progress. [default: false]
+    -p --progress  # Output progress.
 
 Notes:
     Listing printers lists the available local printers as available/visible to the systems 'lp'.
@@ -24,6 +26,7 @@ Notes:
 
     Output will –unless otherwise explicitly specified– default to stdout.
 """
+import sys
 import base64
 import os.path as path
 
@@ -66,30 +69,41 @@ def handle_list(args, config):
 
 
 def handle_create(args, config):
+    source   = None
     template = None
     output   = None
 
+    if args['<infile>']:
+        source = ((pth, xml.read_xml(pth)) for pth in args['<infile>'])
+    else:
+        source = ((None, xml.load_xml(bstr)) for bstr in sys.stdin.buffer)
+
+        if args['--suffixed']:
+            raise SystemExit("Cannot --suffix if input comes from stdin!")
+
     counter = 0
-    for source_path in args['<infile>']:
-        tree = read_xml(source_path)
-        dte  = xml.wrap_xml(tree)
+    for pth, dte in source:
+        tree = xml.dump_etree(dte)
 
         dte_type = int(dte.Documento.Encabezado.IdDoc.TipoDTE)
+        dte_id   = int(dte.Documento.Encabezado.IdDoc.Folio)
         dte_rut  = int(str(dte.Documento.Encabezado.Emisor.RUTEmisor).split('-')[0])
 
-        company_pool = CompanyPool.from_file(config.static.companies)
+        if not args['--extern']:
+            company_pool = CompanyPool.from_file(config.static.companies)
+        else:
+            company_pool = None
 
         if args['--cedible'] and dte_type in (56, 61):
             raise SystemExit("NC and ND are not subject to the argument --cedible. Will not proceed...")
 
-        # Generate TeX
         if args['--medium'] not in ('carta', 'oficio', 'thermal80mm'):
             raise SystemExit("Unknown medium to generate printable template for: {0}".format(args['--medium']))
 
         template, resources = printing.create_template(
             dte_xml = tree,
-            company = company_pool,
             medium  = args['--medium'],
+            company = company_pool,
             cedible = args['--cedible'],
             draft   = args['--draft']
         )
@@ -107,20 +121,16 @@ def handle_create(args, config):
 
                     with open(res_path, 'wb') as fh:
                         fh.write(res.data)
-        elif args['pdf']:
+
+        if args['pdf']:
             b64pdf = printing.tex_to_pdf(template, resources)
             output = base64.b64decode(b64pdf)
 
             if args['--progress']:
-                print_stderr(
-                    "[{0}/{1}] Created PDF from {2}".format(
-                        counter + 1,
-                        len(args['<infile>']),
-                        source_path)
-                )
+                print_stderr("[{0}/{1}] Created PDF from {2}".format(counter + 1, len(args['<infile>']), pth))
 
             if args['--suffixed']:
-                basepath = path.basename(source_path).split('.')[0]
+                basepath = path.basename(pth).split('.')[0]
                 if args['--cedible']:
                     sink_path = basepath + '_cedible.pdf'
                 else:
@@ -128,9 +138,17 @@ def handle_create(args, config):
 
                 with open(sink_path, 'wb') as fh:
                     fh.write(output)
+
+            elif args['--generate']:
+                fname = "{0}_{1}_{2}.pdf".format(dte_rut, dte_type, dte_id)
+
+                with open(fname, 'wb') as fh:
+                    fh.write(output)
+
             elif args['<outfile>']:
                 with open(args['<outfile>'], 'wb') as fh:
                     fh.write(output)
+
             else:
                 print(output)
         else:
