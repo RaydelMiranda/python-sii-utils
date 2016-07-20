@@ -69,6 +69,19 @@ def main():
         _error_handling(args, "Interrupted...")
     except Exception as exc:
         _error_handling(args, "Failed with message (introspect with --debug): \"{0}\"".format(str(exc)))
+    finally:
+        # Manually flush and close stdout. We have to make sure no flushes are pending before close
+        # otherwise we get a SIGPIPE if the receiving process did not empty the pipe.
+        try:
+            sys.stdout.flush()
+        finally:
+            try:
+                sys.stdout.close()
+            finally:
+                try:
+                    sys.stderr.flush()
+                finally:
+                    sys.stderr.close()
 
 
 def _error_handling(args, msg):

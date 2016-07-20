@@ -1,15 +1,17 @@
 """
 Usage:
-    sii xml [options] bundle dte       [--inplace | --suffixed] <infile>...
-    sii xml [options] bundle enviodte  (--sii | --exchange) <outfile> <infile>...
-    sii xml [options] bundle lv        <outfile> <infile>...
-    sii xml [options] gen doc ack      <infile> <outfile>
-    sii xml [options] gen doc ok       <infile> <outfile>
-    sii xml [options] gen merch ack    <infile> <outfile>
-    sii xml [options] sign             [--all] [--inplace | --suffixed | <outfile>] <infile>...
-    sii xml [options] verify signature <infile>...
-    sii xml [options] verify schema    [--xsd=<file>] <infile>...
-    sii xml [options] void doc         <outfile> <infile>...
+    sii xml [options] read              <infile>...
+    sii xml [options] bundle dte        [--inplace | --suffixed] <infile>...
+    sii xml [options] bundle enviodte   (--sii | --exchange) <outfile> <infile>...
+    sii xml [options] bundle lv         <outfile> <infile>...
+    sii xml [options] unbundle enviodte [--inplace] [--generate] <envio>
+    sii xml [options] gen doc ack       <infile> <outfile>
+    sii xml [options] gen doc ok        <infile> <outfile>
+    sii xml [options] gen merch ack     <infile> <outfile>
+    sii xml [options] sign              [--all] [--inplace | --suffixed | <outfile>] <infile>...
+    sii xml [options] verify signature  <infile>...
+    sii xml [options] verify schema     [--xsd=<file>] <infile>...
+    sii xml [options] void doc          <outfile> <infile>...
 
 Options:
     --inplace   # Will modify the same file it read with the processed output.
@@ -22,6 +24,9 @@ Options:
     --all  # Signs all signodes in the document. Otherwise only the topmost will be signed.
 
     --xsd <file>  # XSD Schema definition file to check it against.
+
+Commands:
+    read  # Reads files and condenses them to lines delimited by newline. Useful to feed via stdin.
 
 Notes:
     * There are currently no safeguards in place to avoid overwriting a file with nothing (emptying
@@ -39,13 +44,15 @@ from sii.lib import exchange
 from sii.lib import validation as validate
 from sii.lib import types
 
-from .helpers import print_xml, read_xml, read_xmls, stack_extension, write_xml
+from .helpers import print_xml, read_xml, read_xmls, condense_xml, stack_extension, write_xml
 
 
 def handle(config, argv):
     args = docopt.docopt(__doc__, argv=argv)
 
-    if args['bundle']:
+    if args['read']:
+        handle_reading(args, config)
+    elif args['bundle']:
         handle_bundling(args, config)
     elif args['gen']:
         handle_generate(args, config)
@@ -57,6 +64,19 @@ def handle(config, argv):
         handle_void(args, config)
     else:
         raise RuntimeError("Conditional Fallthrough")
+
+
+def handle_reading(args, config):
+    for fname in args['<infile>']:
+        with open(fname, 'rb') as fh:
+            raw   = fh.read()
+            clean = condense_xml(raw)
+
+            try:
+                sys.stdout.buffer.write(clean + b"\n")
+                sys.stdout.buffer.flush()
+            except:
+                pass
 
 
 def handle_bundling(args, config):
