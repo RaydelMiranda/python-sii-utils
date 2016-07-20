@@ -1,4 +1,4 @@
-python-sii-utils (1.0.0~2016072000) UNRELEASED; urgency=low
+python-sii-utils (1.0.0) stable; urgency=low
 
   * Bundling of <Documento> XML's.
   * Bundling of <EnvioDTE>.
