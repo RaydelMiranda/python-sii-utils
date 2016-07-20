@@ -1,3 +1,9 @@
+python-sii-utils (1.1.0~2016072000) testing; urgency=medium
+
+  * Unbundle EnvioDTE now supports unbundling multiple input files.
+
+ -- Leonhard Weber <leonhard.weber@voipir.cl>  Wed, 20 Jul 2016 19:08:28 -0400
+
 python-sii-utils (1.0.1) stable; urgency=medium
 
   * Fixed missing help message on invalid command.

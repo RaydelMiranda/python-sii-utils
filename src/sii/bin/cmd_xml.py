@@ -4,7 +4,7 @@ Usage:
     sii xml [options] bundle dte        [--inplace | --suffixed] <infile>...
     sii xml [options] bundle enviodte   (--sii | --exchange) <outfile> <infile>...
     sii xml [options] bundle lv         <outfile> <infile>...
-    sii xml [options] unbundle enviodte [--inplace] [--generate] <envio>
+    sii xml [options] unbundle enviodte [--inplace] [--generate] <envio>...
     sii xml [options] gen doc ack       <infile> <outfile>
     sii xml [options] gen doc ok        <infile> <outfile>
     sii xml [options] gen merch ack     <infile> <outfile>
@@ -150,28 +150,29 @@ def handle_unbundling(args, config):
 
 
 def handle_unbundling_enviodte(args, config):
-    enviodte = read_xml(args['<envio>'])
-    tree_lst = schemas.unbundle_enviodte(enviodte)
+    for fname in args['<envio>']:
+        enviodte = read_xml(fname)
+        tree_lst = schemas.unbundle_enviodte(enviodte)
 
-    if len(tree_lst) > 1 and args['--inplace']:
-        raise SystemExit("<EnvioDTE> contains more than one <DTE>. Cannot unbundle --inplace.")
+        if len(tree_lst) > 1 and args['--inplace']:
+            raise SystemExit("<EnvioDTE> contains more than one <DTE>. Cannot unbundle '--inplace'.")
 
-    for tree in tree_lst:
-        if args['--generate']:
-            dte = xml.wrap_xml(tree)
+        for tree in tree_lst:
+            if args['--generate']:
+                dte = xml.wrap_xml(tree)
 
-            dte_rut  = str(dte.Documento.Encabezado.Emisor.RUTEmisor).split('-')[0]
-            dte_type = int(dte.Documento.Encabezado.IdDoc.TipoDTE)
-            dte_id   = int(dte.Documento.Encabezado.IdDoc.Folio)
+                dte_rut  = str(dte.Documento.Encabezado.Emisor.RUTEmisor).split('-')[0]
+                dte_type = int(dte.Documento.Encabezado.IdDoc.TipoDTE)
+                dte_id   = int(dte.Documento.Encabezado.IdDoc.Folio)
 
-            ftempl = "{company}_{type}_{id}.xml"
-            fname  = ftempl.format(company=dte_rut, type=dte_type, id=dte_id)
+                ftempl  = "{company}_{type}_{id}.xml"
+                ftarget = ftempl.format(company=dte_rut, type=dte_type, id=dte_id)
 
-            write_xml(tree, fname, encoding='ISO-8859-1')
-        elif args['--inplace']:
-            write_xml(tree, args['<envio>'], encoding='ISO-8859-1')
-        else:
-            print_xml(tree)
+                write_xml(tree, ftarget, encoding='ISO-8859-1')
+            elif args['--inplace']:
+                write_xml(tree, fname, encoding='ISO-8859-1')
+            else:
+                print_xml(tree)
 
 
 def handle_generate(args, config):
