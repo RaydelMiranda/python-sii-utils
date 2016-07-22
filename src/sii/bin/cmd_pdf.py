@@ -3,8 +3,8 @@ Usage:
     sii pdf [options] list formats
     sii pdf [options] list mediums
     sii pdf [options] list printers
-    sii pdf [options] create tex [<outfile>] [-] | <infile>...
-    sii pdf [options] create pdf [--progress] [--suffixed | --generate | <outfile>] [-] | <infile>...
+    sii pdf [options] create tex [<outfile>] ([-] | <infile>...)
+    sii pdf [options] create pdf [--progress] [--suffixed | --generate | <outfile>] ([-] | <infile>...)
     sii pdf [options] print <printer> <infile>...
 
 Options:
