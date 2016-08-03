@@ -61,7 +61,7 @@ def cmd(args, config):
             print("Unknown Command: {0}".format(args['<command>']), file=sys.stderr)
         else:
             argv = [args['<command>']] + args['<args>']
-            return module.handle(config, argv)
+            return module.handle(config, args, argv)
 
 
 def main():
@@ -71,7 +71,7 @@ def main():
         config = Configuration(cfg_path=args['--config'], cfg_templ=DEFAULT_CONFIG_PATH)
         cmd(args, config)
     except KeyboardInterrupt:
-        _error_handling(args, "Interrupted...")
+        _error_handling(args, "")
     except Exception as exc:
         _error_handling(args, "Failed with message (introspect with --debug): \"{0}\"".format(str(exc)))
 

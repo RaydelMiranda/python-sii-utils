@@ -7,7 +7,7 @@ from sii.lib import validation as validate
 from .helpers import read_xml
 
 
-def handle(args, config):
+def handle(config, args, argv):
     if args['signature']:
         validate_signature(args, config)
     if args['schema']:

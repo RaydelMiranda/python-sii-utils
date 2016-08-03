@@ -22,7 +22,7 @@ TAX_ADVANCE   = (19,)
 TAX_RETENTION = (15, 33, 331, 34, 39)
 
 
-def handle(config, argv):
+def handle(config, args, argv):
     args = docopt.docopt(__doc__, argv=argv)
 
     if args['stats']:
