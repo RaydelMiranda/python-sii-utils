@@ -33,6 +33,9 @@ import sys
 import base64
 import signal
 import os.path as path
+
+import queue
+import threading as th
 import multiprocessing as mp
 
 import docopt
@@ -100,8 +103,8 @@ def handle_create(args, config):
         worker_count = 1
 
     # Create and feed job queue
-    q_in  = mp.Queue()
-    q_out = mp.Queue()
+    q_in  = queue.Queue()
+    q_out = queue.Queue()
 
     for job_id, source in enumerate(sources):
         q_in.put((args, company_pool, source, job_id + 1))
@@ -110,11 +113,11 @@ def handle_create(args, config):
         q_in.put(None)  # sentinel to finish for each of the workers
 
     # Set SIGINT handler to close the queue
-    signal.signal(signal.SIGINT,  lambda sig, stack: q_in.close())
-    signal.signal(signal.SIGTERM, lambda sig, stack: q_in.close())
+    # signal.signal(signal.SIGINT,  lambda sig, stack: q_in.close())
+    # signal.signal(signal.SIGTERM, lambda sig, stack: q_in.close())
 
     # Spawn and start jobs
-    workers = {pid: mp.Process(target=_handle_create_worker, args=(pid, q_in, q_out)) for pid in range(worker_count)}
+    workers = {pid: th.Thread(target=_handle_create_worker, args=(pid, q_in, q_out)) for pid in range(worker_count)}
     for pid, worker in workers.items():
         if args['--debug']:
             print_stderr("Spawning Worker with PID <{0}>".format(pid))
@@ -135,7 +138,7 @@ def handle_create(args, config):
             jid, exc = event
 
             if args['--debug']:
-                print_stderr("Worker <{0}> has encountered an error in job <{1}>: {2}".format(pid, jid, str(exc)))
+                print_stderr("Worker <{0}> has encountered an error on job <{1}>: {2}".format(pid, jid, str(exc)))
 
 
 def _handle_create_worker(pid, q_in, q_out):
@@ -192,8 +195,7 @@ def _handle_create_worker(pid, q_in, q_out):
 
                         with open(res_path, 'wb') as fh:
                             fh.write(res.data)
-
-            if args['pdf']:
+            elif args['pdf']:
                 b64pdf = printing.tex_to_pdf(template, resources)
                 output = base64.b64decode(b64pdf)
 
@@ -224,6 +226,10 @@ def _handle_create_worker(pid, q_in, q_out):
                 "[{0}/{1}] Processing PDF{2} for {3} FAILED: {4}"
                 .format(jid, len(args['<infile>']), " (cedible)" if args['--cedible'] else "", pth, str(exc))
             )
+
+            if args['--debug']:
+                raise
+
             q_out.put((pid, jid, exc))
 
     q_out.put((pid, None))  # sentinel that i'm on my way out
