@@ -1,3 +1,9 @@
+python-sii-utils (1.1.0~2016080500) testing; urgency=medium
+
+  * Merge multithreaded PDF/TeX Generation.
+
+ -- Leonhard Weber <leonhard.weber@voipir.cl>  Fri, 05 Aug 2016 12:19:39 -0400
+
 python-sii-utils (1.1.0~2016072000) testing; urgency=medium
 
   * Unbundle EnvioDTE now supports unbundling multiple input files.
