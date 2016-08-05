@@ -48,7 +48,7 @@ from sii.lib.lib import xml
 from .helpers import print_xml, read_xml, read_xmls, condense_xml, stack_extension, write_xml
 
 
-def handle(config, argv):
+def handle(config, args, argv):
     args = docopt.docopt(__doc__, argv=argv)
 
     if args['read']:

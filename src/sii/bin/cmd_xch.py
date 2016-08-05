@@ -61,7 +61,7 @@ _CSV_ROW   = collections.namedtuple('CsvRow', ['rut', 'rznsoc', 'url', 'mail', '
 pth_expand = lambda pth: os.path.abspath(os.path.expanduser(pth))
 
 
-def handle(config, argv):
+def handle(config, args, argv):
     args = docopt.docopt(__doc__, argv=argv)
 
     if args['email']:

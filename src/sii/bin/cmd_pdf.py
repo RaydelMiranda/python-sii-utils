@@ -15,7 +15,10 @@ Options:
     --cedible          # If "cedible" declaration form should be included [default: false]
     --draft            # Include a DRAFT disclaimer on the document.
 
+    -j --jobs <n>  # Number of jobs to run concurrently. Provided with (<n> == 0), CPU count - 1 will be used.
+
     -p --progress  # Output progress.
+    -v --verbose   # Be talkative about what is going on.
 
 Notes:
     Listing printers lists the available local printers as available/visible to the systems 'lp'.
@@ -28,7 +31,12 @@ Notes:
 """
 import sys
 import base64
+import signal
 import os.path as path
+
+import queue
+import threading as th
+import multiprocessing as mp
 
 import docopt
 
@@ -39,8 +47,9 @@ from sii.lib.types import CompanyPool
 from .helpers import print_stderr, read_xml
 
 
-def handle(config, argv):
-    args = docopt.docopt(__doc__, argv=argv)
+def handle(config, args, argv):
+    subargs = docopt.docopt(__doc__, argv=argv)
+    args.update(subargs)
 
     if args['list']:
         handle_list(args, config)
@@ -69,92 +78,176 @@ def handle_list(args, config):
 
 
 def handle_create(args, config):
-    source   = None
-    template = None
-    output   = None
-
+    sources = []
     if args['<infile>']:
-        source = ((pth, xml.read_xml(pth)) for pth in args['<infile>'])
+        for pth in args['<infile>']:
+            with open(pth, 'rb') as fh:
+                buff = fh.read()
+            sources.append((pth, buff))
     else:
-        source = ((None, xml.load_xml(bstr)) for bstr in sys.stdin.buffer)
+        for bytebuff in sys.stdin.buffer:
+            sources.append(('stdin', bytebuff))
 
         if args['--suffixed']:
             raise SystemExit("Cannot --suffix if input comes from stdin!")
 
-    counter = 0
-    for pth, dte in source:
-        tree = xml.dump_etree(dte)
+    if not args['--extern']:
+        company_pool = CompanyPool.from_file(config.static.companies)
+    else:
+        company_pool = None
 
-        dte_type = int(dte.Documento.Encabezado.IdDoc.TipoDTE)
-        dte_id   = int(dte.Documento.Encabezado.IdDoc.Folio)
-        dte_rut  = int(str(dte.Documento.Encabezado.Emisor.RUTEmisor).split('-')[0])
+    # Determine job count
+    if args['--jobs']:
+        worker_count = int(args['--jobs']) if int(args['--jobs']) > 0 else mp.cpu_count() - 1 or 1
+    else:
+        worker_count = 1
 
-        if not args['--extern']:
-            company_pool = CompanyPool.from_file(config.static.companies)
-        else:
-            company_pool = None
+    if worker_count > 1:
+        # Create and feed job queue
+        q_in  = queue.Queue()
+        q_out = queue.Queue()
 
-        if args['--cedible'] and dte_type in (56, 61):
-            raise SystemExit("NC and ND are not subject to the argument --cedible. Will not proceed...")
+        for job_id, source in enumerate(sources):
+            q_in.put((args, company_pool, source, job_id + 1))
 
-        if args['--medium'] not in ('carta', 'oficio', 'thermal80mm'):
-            raise SystemExit("Unknown medium to generate printable template for: {0}".format(args['--medium']))
+        for _ in range(worker_count):
+            q_in.put(None)  # sentinel to finish for each of the workers
 
-        template, resources = printing.create_template(
-            dte_xml = tree,
-            medium  = args['--medium'],
-            company = company_pool,
-            cedible = args['--cedible'],
-            draft   = args['--draft']
+        # Set SIGINT handler to close the queue
+        # signal.signal(signal.SIGINT,  lambda sig, stack: q_in.close())
+        # signal.signal(signal.SIGTERM, lambda sig, stack: q_in.close())
+
+        # Spawn and start jobs
+        workers = {pid: th.Thread(target=_handle_create_worker, args=(pid, q_in, q_out)) for pid in range(worker_count)}
+        for pid, worker in workers.items():
+            if args['--debug']:
+                print_stderr("Spawning Worker with PID <{0}>".format(pid))
+
+            worker.start()
+
+        # Wait for workers to finish while handling their exceptions
+        while workers:
+            pid, *event = q_out.get()
+
+            if not event or event[0] is None:
+                worker = workers.pop(pid)
+                worker.join()
+
+                if args['--debug']:
+                    print_stderr("Releasing Worker with PID <{0}>".format(pid))
+            else:
+                jid, exc = event
+
+                if args['--debug']:
+                    print_stderr("Worker <{0}> has encountered an error on job <{1}>: {2}".format(pid, jid, str(exc)))
+    else:
+        for jid, source in enumerate(sources):
+            path, xmlbuff = source
+
+            _handle_create(args, company_pool, path, xmlbuff, jid)
+
+
+def _handle_create(args, cmpny_pool, path, xmlbuff, jid):
+    dte  = xml.load_xml(xmlbuff)
+    tree = xml.dump_etree(dte)
+
+    dte_type = int(dte.Documento.Encabezado.IdDoc.TipoDTE)
+    dte_id   = int(dte.Documento.Encabezado.IdDoc.Folio)
+    dte_rut  = int(str(dte.Documento.Encabezado.Emisor.RUTEmisor).split('-')[0])
+
+    if args['--cedible'] and dte_type in (56, 61):
+        raise SystemExit("NC and ND are not subject to the argument --cedible. Will not proceed...")
+
+    if args['--medium'] not in ('carta', 'oficio', 'thermal80mm'):
+        raise SystemExit("Unknown medium to generate printable template for: {0}".format(args['--medium']))
+
+    template, resources = printing.create_template(
+        dte_xml = tree,
+        medium  = args['--medium'],
+        company = cmpny_pool,
+        cedible = args['--cedible'],
+        draft   = args['--draft']
+    )
+
+    if args['--verbose']:
+        print_stderr(
+            "[{0}/{1}] Generated PDF{2} for {3}"
+            .format(jid, len(args['<infile>']), " (cedible)" if args['--cedible'] else "", path)
         )
 
-        if args['tex']:
-            if args['<outfile>']:
-                # Write .tex template file
-                with open(args['<outfile>'], 'w') as fh:
-                    fh.write(template)
+    if args['tex']:
+        if args['<outfile>']:
+            # Write .tex template file
+            with open(args['<outfile>'], 'w') as fh:
+                fh.write(template)
 
-                # Write template resources right beside the .tex file
-                basepath = path.dirname(args['<outfile>'])
-                for res in resources:
-                    res_path = path.join(basepath, res.filename)
+            # Write template resources right beside the .tex file
+            basepath = path.dirname(args['<outfile>'])
+            for res in resources:
+                res_path = path.join(basepath, res.filename)
 
-                    with open(res_path, 'wb') as fh:
-                        fh.write(res.data)
+                with open(res_path, 'wb') as fh:
+                    fh.write(res.data)
+    elif args['pdf']:
+        b64pdf = printing.tex_to_pdf(template, resources)
+        output = base64.b64decode(b64pdf)
 
-        if args['pdf']:
-            b64pdf = printing.tex_to_pdf(template, resources)
-            output = base64.b64decode(b64pdf)
-
-            if args['--progress']:
-                print_stderr("[{0}/{1}] Created PDF from {2}".format(counter + 1, len(args['<infile>']), pth))
-
-            if args['--suffixed']:
-                basepath = path.basename(pth).split('.')[0]
-                if args['--cedible']:
-                    sink_path = basepath + '_cedible.pdf'
-                else:
-                    sink_path = basepath + '.pdf'
-
-                with open(sink_path, 'wb') as fh:
-                    fh.write(output)
-
-            elif args['--generate']:
-                fname = "{0}_{1}_{2}.pdf".format(dte_rut, dte_type, dte_id)
-
-                with open(fname, 'wb') as fh:
-                    fh.write(output)
-
-            elif args['<outfile>']:
-                with open(args['<outfile>'], 'wb') as fh:
-                    fh.write(output)
-
+        if args['--suffixed']:
+            basepath = path.basename(path).split('.')[0]
+            if args['--cedible']:
+                sink_path = basepath + '_cedible.pdf'
             else:
-                print(output)
-        else:
-            raise RuntimeError("Conditional Fallthrough")
+                sink_path = basepath + '.pdf'
 
-        counter += 1
+            with open(sink_path, 'wb') as fh:
+                fh.write(output)
+        elif args['--generate']:
+            outpth = "{0}_{1}_{2}{3}.pdf".format(dte_rut, dte_type, dte_id, "_cedible" if args['--cedible'] else "")
+
+            with open(outpth, 'wb') as fh:
+                fh.write(output)
+        elif args['<outfile>']:
+            with open(args['<outfile>'], 'wb') as fh:
+                fh.write(output)
+        else:
+            print(output)
+    else:
+        raise RuntimeError("Conditional Fallthrough")
+
+
+def _handle_create_worker(pid, q_in, q_out):
+    while True:
+        try:
+            job = q_in.get()
+        except OSError:      # parent says abort by closing the queue
+            break
+        else:
+            if job is None:  # got a "finish" sentinel
+                break
+
+        args, cmpny_pool, source, jid = job
+        path, xmlbuff = source
+
+        try:
+            _handle_create(
+                args       = args,
+                cmpny_pool = cmpny_pool,
+                path       = path,
+                xmlbuff    = xmlbuff,
+                jid        = jid
+            )
+        except Exception as exc:
+            print_stderr(
+                "[{0}/{1}] Processing PDF{2} for {3} FAILED: {4}"
+                .format(jid, len(args['<infile>']), " (cedible)" if args['--cedible'] else "", path, str(exc))
+            )
+
+            if args['--debug']:
+                raise
+
+            q_out.put((pid, jid, exc))
+
+    q_out.put((pid, None))  # sentinel that i'm on my way out
 
 
 def handle_print(args, config):

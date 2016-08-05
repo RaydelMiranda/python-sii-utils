@@ -21,7 +21,7 @@ from lxml   import etree
 fullpath = lambda pth: os.path.abspath(os.path.expanduser(pth))
 
 
-def handle(config, argv):
+def handle(config, args, argv):
     args = docopt(__doc__, argv=argv)
 
     if args['test']:
