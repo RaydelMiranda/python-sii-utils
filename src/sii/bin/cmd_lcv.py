@@ -1,16 +1,24 @@
 """
 Usage:
     sii lcv stats [options] <lcv> [--header --amounts --items]
+    sii lcv dump  [options] <lcv> --csv [--output <file>]
     sii lcv edit  [options] <lcv> append <dte>
     sii lcv edit  [options] <lcv> remove <dte>
     sii lcv edit  [options] <lcv> remove <rut> <type> <id>
     sii lcv edit  [options] <lcv> merge <other>
 
 Options:
+    # Stdout Options.
     --stderr-header  # Output structural elements to stderr instead of stdout.
                      # Convenient for bypassing grep filtering!
+
+    # CSV Options.
+    --csv-delim <delim>  # Delimiter for CSV fields. [default: ;]
+    --csv-header         # Output header row for comma separated values.
+
 """
 import sys
+import csv
 import collections
 
 import docopt
@@ -27,6 +35,8 @@ def handle(config, args, argv):
 
     if args['stats']:
         handle_stats(args, config)
+    if args['dump']:
+        handle_dumping(args, config)
     elif args['edit']:
         handle_edit(args, config)
     else:
@@ -206,6 +216,62 @@ def handle_stats(args, config):
                 print(str_row, file=sys.stderr)
             else:
                 print(str_row)
+
+
+def handle_dumping(args, config):
+    lcv = xml.read_xml(args['<lcv>'])
+
+    assert lcv.__name__.endswith('LibroCompraVenta'), "Expected XML to be a <LibroCompraVenta/>!"
+
+    rows = []
+
+    for item in sorted(list(lcv.EnvioLibro.Detalle), key=lambda row: int(row.TpoDoc)):
+        row_tpodoc   = int(item.TpoDoc)
+        row_nrodoc   = int(item.NroDoc)
+        row_fchdoc   = str(item.FchDoc)
+        row_rutdoc   = str(item.RUTDoc)
+        row_rznsoc   = str(item.RznSoc)
+        row_mntneto  = int(item.MntNeto)
+        row_mntexe   = int(item.MntExe)
+        row_mntiva   = int(item.MntIVA)
+        row_mnttotal = int(item.MntTotal)
+
+        rows.append(
+            (
+                row_tpodoc, row_nrodoc, row_fchdoc, row_rutdoc, row_rznsoc,
+                row_mntneto, row_mntexe, row_mntiva, row_mnttotal
+            )
+        )
+
+    if args['--csv']:
+        csv_opts = {
+            'delimiter': args['--csv-delim'],
+            'quoting':   csv.QUOTE_NONNUMERIC
+        }
+
+        if args['--csv-header']:
+            rows.insert(
+                0,
+                (
+                    "Tipo",
+                    "Numero",
+                    "Fecha Emision",
+                    "RUT",
+                    "Razon Social",
+                    "Neto",
+                    "Exento",
+                    "IVA",
+                    "Total "
+                )
+            )
+
+        if args['--output']:
+            with open(args['--output'], 'w') as fh:
+                writer = csv.writer(fh, **csv_opts)
+                writer.writerows(rows)
+        else:
+            writer = csv.writer(sys.stdout, **csv_opts)
+            writer.writerows(rows)
 
 
 def handle_edit(args, config):
