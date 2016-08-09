@@ -1,3 +1,9 @@
+python-sii-utils (1.1.0~2016080900) testing; urgency=medium
+
+  * [e97dcdd] Added CSV dumping to LCV.
+
+ -- Leonhard Weber <leonhard.weber@voipir.cl>  Tue, 09 Aug 2016 19:09:47 -0400
+
 python-sii-utils (1.1.0~2016080500) testing; urgency=medium
 
   * Merge multithreaded PDF/TeX Generation.
