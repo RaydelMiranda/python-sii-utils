@@ -168,7 +168,7 @@ def _resolve_csv(rut, csv_path):
 
             for row in reader:
                 db[row[0].upper()] = _CSV_ROW(
-                    rut    = row[0].upper(),
+                    rut    = row[0].upper(),  # making sure "-K" is uppercased!
                     rznsoc = row[1],
                     url    = row[5],
                     mail   = row[4],
@@ -186,8 +186,8 @@ def _resolve_csv(rut, csv_path):
 def _create_mail(sender, recipient, bcc, subject, message):
     msg = MIMEMultipart()
 
-    msg['From']    = sender
-    msg['To']      = recipient
+    msg['From'] = sender
+    msg['To']   = recipient
     if bcc:
         msg['BCC'] = bcc
     msg['Subject'] = subject

@@ -35,7 +35,7 @@ def handle(config, args, argv):
 
     if args['stats']:
         handle_stats(args, config)
-    if args['dump']:
+    elif args['dump']:
         handle_dumping(args, config)
     elif args['edit']:
         handle_edit(args, config)
