@@ -1,3 +1,9 @@
+python-sii-utils (1.1.0~2016091200) testing; urgency=medium
+
+  * [592a1fc] Fix broken case switch in LCV utils.
+
+ -- Leonhard Weber <leonhard.weber@voipir.cl>  Mon, 12 Sep 2016 18:22:24 -0300
+
 python-sii-utils (1.1.0~2016080900) testing; urgency=medium
 
   * [e97dcdd] Added CSV dumping to LCV.
